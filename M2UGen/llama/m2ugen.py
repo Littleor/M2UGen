@@ -17,8 +17,6 @@ from .audioldm2 import AudioLDM2Pipeline
 from transformers import LlamaTokenizer
 from transformers import Wav2Vec2FeatureExtractor, AutoModel
 from transformers import ViTImageProcessor, ViTModel
-from transformers import VivitImageProcessor, VivitModel
-from transformers import AutoProcessor
 
 import torchaudio
 
@@ -100,32 +98,32 @@ class M2UGen(nn.Module):
         self.iu_vit_f3_3 = nn.Linear(4096, 4096 * self.feature_scaler, bias=bridge_bias)
         print(f'ViT initialized...')
 
-        # 3. ViViT Encoder
-        # The model files for ViViT can be downloaded here in case of network issues:
-        # https://huggingface.co/google/vivit-b-16x2-kinetics400
-        # And set the vivit_path argument to directory with the model files
-        print(f'Initialize ViViT...')
-        self.vivit_model = VivitModel.from_pretrained(self.args.vivit_path)  # .to(self.device)
-        self.vivit_model.eval()
-        self.vivit_processor = VivitImageProcessor.from_pretrained(self.args.vivit_path)
-        self.iu_vivit_agg = nn.Conv1d(in_channels=3137, out_channels=1, kernel_size=1)
-        self.iu_vivit_proj = nn.Linear(768, 4096)
+        # # 3. ViViT Encoder
+        # # The model files for ViViT can be downloaded here in case of network issues:
+        # # https://huggingface.co/google/vivit-b-16x2-kinetics400
+        # # And set the vivit_path argument to directory with the model files
+        # print(f'Initialize ViViT...')
+        # self.vivit_model = VivitModel.from_pretrained(self.args.vivit_path)  # .to(self.device)
+        # self.vivit_model.eval()
+        # self.vivit_processor = VivitImageProcessor.from_pretrained(self.args.vivit_path)
+        # self.iu_vivit_agg = nn.Conv1d(in_channels=3137, out_channels=1, kernel_size=1)
+        # self.iu_vivit_proj = nn.Linear(768, 4096)
 
-        self.iu_vivit_norm_1 = bridge_norm_layer(4096)
-        self.iu_vivit_f1_1 = nn.Linear(4096, 4096 * self.feature_scaler, bias=bridge_bias)
-        self.iu_vivit_f2_1 = nn.Linear(4096 * self.feature_scaler, 4096, bias=bridge_bias)
-        self.iu_vivit_f3_1 = nn.Linear(4096, 4096 * self.feature_scaler, bias=bridge_bias)
+        # self.iu_vivit_norm_1 = bridge_norm_layer(4096)
+        # self.iu_vivit_f1_1 = nn.Linear(4096, 4096 * self.feature_scaler, bias=bridge_bias)
+        # self.iu_vivit_f2_1 = nn.Linear(4096 * self.feature_scaler, 4096, bias=bridge_bias)
+        # self.iu_vivit_f3_1 = nn.Linear(4096, 4096 * self.feature_scaler, bias=bridge_bias)
 
-        self.iu_vivit_norm_2 = bridge_norm_layer(4096)
-        self.iu_vivit_f1_2 = nn.Linear(4096, 4096 * self.feature_scaler, bias=bridge_bias)
-        self.iu_vivit_f2_2 = nn.Linear(4096 * self.feature_scaler, 4096, bias=bridge_bias)
-        self.iu_vivit_f3_2 = nn.Linear(4096, 4096 * self.feature_scaler, bias=bridge_bias)
+        # self.iu_vivit_norm_2 = bridge_norm_layer(4096)
+        # self.iu_vivit_f1_2 = nn.Linear(4096, 4096 * self.feature_scaler, bias=bridge_bias)
+        # self.iu_vivit_f2_2 = nn.Linear(4096 * self.feature_scaler, 4096, bias=bridge_bias)
+        # self.iu_vivit_f3_2 = nn.Linear(4096, 4096 * self.feature_scaler, bias=bridge_bias)
 
-        self.iu_vivit_norm_3 = bridge_norm_layer(4096)
-        self.iu_vivit_f1_3 = nn.Linear(4096, 4096 * self.feature_scaler, bias=bridge_bias)
-        self.iu_vivit_f2_3 = nn.Linear(4096 * self.feature_scaler, 4096, bias=bridge_bias)
-        self.iu_vivit_f3_3 = nn.Linear(4096, 4096 * self.feature_scaler, bias=bridge_bias)
-        print(f'ViViT initialized...')
+        # self.iu_vivit_norm_3 = bridge_norm_layer(4096)
+        # self.iu_vivit_f1_3 = nn.Linear(4096, 4096 * self.feature_scaler, bias=bridge_bias)
+        # self.iu_vivit_f2_3 = nn.Linear(4096 * self.feature_scaler, 4096, bias=bridge_bias)
+        # self.iu_vivit_f3_3 = nn.Linear(4096, 4096 * self.feature_scaler, bias=bridge_bias)
+        # print(f'ViViT initialized...')
 
         # 4. llama
         with open(os.path.join(llama_ckpt_dir, "params.json"), "r") as f:
@@ -210,24 +208,24 @@ class M2UGen(nn.Module):
                                                 num_output_tokens=self.model_args.num_output_tokens)
 
         # 6. Generator
-        if self.args.music_decoder.lower() == "audioldm2":
-            # The model files for AudioLDM2 can be downloaded here in case of network issues:
-            # https://huggingface.co/cvssp/audioldm2-music
-            # And set the music_decoder_path argument to directory with the model files
-            print(f'Initialize AudioLDM2...')
-            dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-            self.generation_model = AudioLDM2Pipeline.from_pretrained(self.args.music_decoder_path, torch_dtype=dtype)
-            self.generation_model.to("cuda")
-            print(f'AudioLDM2 initialized...')
-        else:
-            # The model files for MusicGen can be downloaded here in case of network issues:
-            # https://huggingface.co/facebook/musicgen-medium
-            # And set the music_decoder_path argument to directory with the model files
-            print(f'Initialize MusicGen...')
-            self.generation_processor = AutoProcessor.from_pretrained(self.args.music_decoder_path)
-            self.generation_model = MusicgenForConditionalGeneration.from_pretrained(self.args.music_decoder_path)
-            self.generation_model.eval()
-            print(f'MusicGen initialized...')
+        # if self.args.music_decoder.lower() == "audioldm2":
+        #     # The model files for AudioLDM2 can be downloaded here in case of network issues:
+        #     # https://huggingface.co/cvssp/audioldm2-music
+        #     # And set the music_decoder_path argument to directory with the model files
+        #     print(f'Initialize AudioLDM2...')
+        #     dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+        #     self.generation_model = AudioLDM2Pipeline.from_pretrained(self.args.music_decoder_path, torch_dtype=dtype)
+        #     self.generation_model.to("cuda")
+        #     print(f'AudioLDM2 initialized...')
+        # else:
+        #     # The model files for MusicGen can be downloaded here in case of network issues:
+        #     # https://huggingface.co/facebook/musicgen-medium
+        #     # And set the music_decoder_path argument to directory with the model files
+        #     print(f'Initialize MusicGen...')
+        #     self.generation_processor = AutoProcessor.from_pretrained(self.args.music_decoder_path)
+        #     self.generation_model = MusicgenForConditionalGeneration.from_pretrained(self.args.music_decoder_path)
+        #     self.generation_model.eval()
+        #     print(f'MusicGen initialized...')
         self.music_decoder = self.args.music_decoder.lower()
 
         # 4. prefix
@@ -257,10 +255,10 @@ class M2UGen(nn.Module):
                         trainable[name] = para
                 if "mu_mert_" in name:
                     trainable[name] = para
-                if "iu_vivit_" in name:
-                    trainable[name] = para
-                if "iu_vit_" in name:
-                    trainable[name] = para
+                # if "iu_vivit_" in name:
+                #     trainable[name] = para
+                # if "iu_vit_" in name:
+                #     trainable[name] = para
                 if "prefix_query" in name:
                     trainable[name] = para
                 if "output_projector" in name:
@@ -351,15 +349,16 @@ class M2UGen(nn.Module):
         return torch.stack(xs, dim=0)
 
     def encode_video(self, x):
-        xs = []
-        for sub_x in x:
-            inputs = self.vivit_processor(list(sub_x), padding=True, return_tensors="pt").to(self.vivit_model.device)
-            with torch.no_grad():
-                outputs = self.vivit_model(**inputs)
-            last_hidden_states = outputs.last_hidden_state
-            sub_x = self.iu_vivit_agg(last_hidden_states.to(self.device)).squeeze()
-            xs.append(sub_x)
-        return torch.stack(xs, dim=0)
+        pass
+        # xs = []
+        # for sub_x in x:
+        #     inputs = self.vivit_processor(list(sub_x), padding=True, return_tensors="pt").to(self.vivit_model.device)
+        #     with torch.no_grad():
+        #         outputs = self.vivit_model(**inputs)
+        #     last_hidden_states = outputs.last_hidden_state
+        #     sub_x = self.iu_vivit_agg(last_hidden_states.to(self.device)).squeeze()
+        #     xs.append(sub_x)
+        # return torch.stack(xs, dim=0)
 
     def forward_audio(self, inputs, cache_size=10, cache_t=20, cache_weight=0.5):
         outputs = []
@@ -446,46 +445,47 @@ class M2UGen(nn.Module):
         return image_feats
 
     def forward_video(self, inputs, cache_size=10, cache_t=20, cache_weight=0.5):
-        outputs = []
-        outputs_weights = []
-        for input_type, (input, input_weight) in inputs.items():
-            outputs.append(F.normalize(self.encode_video(input), dim=-1))
-            outputs_weights.append(input_weight)
-        outputs_weights = [x / (sum(outputs_weights) + 1e-6) for x in outputs_weights]
+        pass
+        # outputs = []
+        # outputs_weights = []
+        # for input_type, (input, input_weight) in inputs.items():
+        #     outputs.append(F.normalize(self.encode_video(input), dim=-1))
+        #     outputs_weights.append(input_weight)
+        # outputs_weights = [x / (sum(outputs_weights) + 1e-6) for x in outputs_weights]
 
-        video_feats = sum([output * output_weight for output, output_weight in zip(outputs, outputs_weights)])
-        device = video_feats.device
+        # video_feats = sum([output * output_weight for output, output_weight in zip(outputs, outputs_weights)])
+        # device = video_feats.device
 
-        if self.knn:
-            video_feats_ori = video_feats
-            sims, indices = self.index.search(video_feats.cpu(), int(cache_size))
-            B = sims.shape[0]
-            prototypes = [self.index.reconstruct(x) for x in indices.reshape(-1, ).tolist()]
-            prototypes = np.vstack(prototypes).reshape(B, int(cache_size), -1)  # [N, top_k, 1024]
-            sims = torch.tensor(sims, device=device)
-            prototypes = torch.tensor(prototypes, device=device)
+        # if self.knn:
+        #     video_feats_ori = video_feats
+        #     sims, indices = self.index.search(video_feats.cpu(), int(cache_size))
+        #     B = sims.shape[0]
+        #     prototypes = [self.index.reconstruct(x) for x in indices.reshape(-1, ).tolist()]
+        #     prototypes = np.vstack(prototypes).reshape(B, int(cache_size), -1)  # [N, top_k, 1024]
+        #     sims = torch.tensor(sims, device=device)
+        #     prototypes = torch.tensor(prototypes, device=device)
 
-            sims = (sims * cache_t).softmax(dim=-1)
-            video_feats = sims @ prototypes
-            video_feats = video_feats / video_feats.norm(dim=-1, keepdim=True)
+        #     sims = (sims * cache_t).softmax(dim=-1)
+        #     video_feats = sims @ prototypes
+        #     video_feats = video_feats / video_feats.norm(dim=-1, keepdim=True)
 
-            video_feats = (1 - cache_weight) * video_feats_ori + cache_weight * video_feats
-            video_feats = video_feats / video_feats.norm(dim=-1, keepdim=True)
+        #     video_feats = (1 - cache_weight) * video_feats_ori + cache_weight * video_feats
+        #     video_feats = video_feats / video_feats.norm(dim=-1, keepdim=True)
 
-        video_feats = video_feats.unsqueeze(1)  # B, 1, D
-        video_feats = self.iu_vivit_proj(video_feats)
-        video_feats_norm = self.iu_vivit_norm_1(video_feats)
-        video_feats = video_feats + self.iu_vivit_f2_1(
-            F.silu(self.iu_vivit_f1_1(video_feats_norm)) * self.iu_vivit_f3_1(video_feats_norm))
+        # video_feats = video_feats.unsqueeze(1)  # B, 1, D
+        # video_feats = self.iu_vivit_proj(video_feats)
+        # video_feats_norm = self.iu_vivit_norm_1(video_feats)
+        # video_feats = video_feats + self.iu_vivit_f2_1(
+        #     F.silu(self.iu_vivit_f1_1(video_feats_norm)) * self.iu_vivit_f3_1(video_feats_norm))
 
-        video_feats_norm = self.iu_vivit_norm_2(video_feats)
-        video_feats = video_feats + self.iu_vivit_f2_2(
-            F.silu(self.iu_vivit_f1_2(video_feats_norm)) * self.iu_vivit_f3_2(video_feats_norm))
+        # video_feats_norm = self.iu_vivit_norm_2(video_feats)
+        # video_feats = video_feats + self.iu_vivit_f2_2(
+        #     F.silu(self.iu_vivit_f1_2(video_feats_norm)) * self.iu_vivit_f3_2(video_feats_norm))
 
-        video_feats_norm = self.iu_vivit_norm_3(video_feats)
-        video_feats = video_feats + self.iu_vivit_f2_3(
-            F.silu(self.iu_vivit_f1_3(video_feats_norm)) * self.iu_vivit_f3_3(video_feats_norm))
-        return video_feats
+        # video_feats_norm = self.iu_vivit_norm_3(video_feats)
+        # video_feats = video_feats + self.iu_vivit_f2_3(
+        #     F.silu(self.iu_vivit_f1_3(video_feats_norm)) * self.iu_vivit_f3_3(video_feats_norm))
+        # return video_feats
 
     @torch.inference_mode()
     def forward_inference(self, tokens, start_pos: int, audio_feats=None, image_feats=None, video_feats=None):
@@ -549,8 +549,8 @@ class M2UGen(nn.Module):
         audio_feats, video_feats, image_feats = None, None, None
         if audios is not None:
             audio_feats = self.forward_audio({'Audio': [audios, 1]})
-        if videos is not None:
-            video_feats = self.forward_video({'Video': [videos, 1]})
+        # if videos is not None:
+            # video_feats = self.forward_video({'Video': [videos, 1]})
         if imgs is not None:
             image_feats = self.forward_image({'Image': [imgs, 1]})
         _bsz, seqlen = tokens.shape
@@ -606,7 +606,7 @@ class M2UGen(nn.Module):
             assert self.llama.vocab_size == 32000 + self.model_args.num_gen_audio_tokens, self.llama.vocab_size
             c_loss = self.criterion(output.reshape(-1, self.llama.vocab_size), labels.flatten().to(self.device))
 
-        if music_caption is not None and any([mc != '' for mc in music_caption]):
+        if False and music_caption is not None and any([mc != '' for mc in music_caption]):
             if not all([i in output for i in range(32000, 32008)]):
                 c_loss += 100
             if self.music_decoder == "audioldm2":
@@ -647,6 +647,7 @@ class M2UGen(nn.Module):
 
     @torch.inference_mode()
     def generate_music(self, embeddings, audio_length_in_s, music_caption):
+        return
         gen_prefix = ''.join([f'[AUD{i}]' for i in range(len(self.audio_tokens))])
         gen_prefx_ids = self.tokenizer(gen_prefix, add_special_tokens=False, return_tensors="pt").input_ids.to(
             self.device)
@@ -697,10 +698,10 @@ class M2UGen(nn.Module):
                 audio_feats = self.forward_audio({'Audio': [[audios], 1]}, cache_size, cache_t, cache_weight)
             else:
                 audio_feats = None
-            if videos is not None:
-                video_feats = self.forward_video({'Video': [[videos], 1]}, cache_size, cache_t, cache_weight)
-            else:
-                video_feats = None
+            # if videos is not None:
+            #     video_feats = self.forward_video({'Video': [[videos], 1]}, cache_size, cache_t, cache_weight)
+            # else:
+            video_feats = None
             if imgs is not None:
                 image_feats = self.forward_image({'Image': [[imgs], 1]}, cache_size, cache_t, cache_weight)
             else:
@@ -762,9 +763,9 @@ class M2UGen(nn.Module):
                 pass
             decoded.append(self.tokenizer.decode(t))
 
-        if len(music_output_embeddings) == len(self.audio_tokens):
-            music_output_embeddings = torch.cat(music_output_embeddings, dim=1)
-            return [decoded[0], {'aud': [self.generate_music(music_output_embeddings, audio_length_in_s, decoded[0])]}]
+        # if len(music_output_embeddings) == len(self.audio_tokens):
+        #     music_output_embeddings = torch.cat(music_output_embeddings, dim=1)
+        #     return [decoded[0], {'aud': [self.generate_music(music_output_embeddings, audio_length_in_s, decoded[0])]}]
 
         return [decoded[0]]
 

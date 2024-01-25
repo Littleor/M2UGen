@@ -68,9 +68,10 @@ print("Loading Model Checkpoint")
 checkpoint = torch.load(args.model, map_location='cpu')
 
 new_ckpt = {}
-for key, value in checkpoint['model'].items():
-    key = key.replace("module.", "")
-    new_ckpt[key] = value
+for key, value in checkpoint["model"].items():
+    if "vivit" not in key and "generation_model" not in key:
+        key = key.replace("module.", "")
+        new_ckpt[key] = value
 
 load_result = model.load_state_dict(new_ckpt, strict=True)
 assert len(load_result.unexpected_keys) == 0, f"Unexpected keys: {load_result.unexpected_keys}"
